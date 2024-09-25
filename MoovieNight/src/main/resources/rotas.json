@@ -1,0 +1,52 @@
+[
+  {
+    "path": "/v1/filme/getFilme",
+    "roles": []
+  },
+  {
+    "path": "/v1/filme/getFilmeGenero",
+    "roles": []
+  },
+  {
+    "path": "/v1/filme/getFilmeNome",
+    "roles": []
+  },
+  {
+    "path": "/v1/filme/getFilmeSinopse",
+    "roles": []
+  },
+  {
+    "path": "/v1/conta/create",
+    "roles": []
+  },
+  {
+    "path": "/v1/conta/login",
+    "roles": []
+  },
+  {
+    "path": "/v1/conta/alugarFilme3",
+    "roles": ["CLIENTE"]
+  },
+  {
+    "path": "/v1/conta/alugarFilme5",
+    "roles": ["CLIENTE"]
+  },
+  {
+    "path": "/v1/conta/alugarFilme7",
+    "roles": ["CLIENTE"]
+  },
+  {
+    "path": "/v1/conta/getBiblioteca",
+    "roles": ["CLIENTE"]
+  },
+  {
+    "path": "/v1/filme/adm/createFilme",
+    "roles": ["ADMINISTRADOR"]
+  },
+  {
+    "path": "/v1/filme/adm/putFilme",
+    "roles": ["ADMINISTRADOR"]
+  }
+
+
+]
