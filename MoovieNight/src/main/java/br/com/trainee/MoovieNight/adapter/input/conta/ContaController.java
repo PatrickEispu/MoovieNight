@@ -18,7 +18,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/v1/conta")
-public class ContaController {
+public class ContaController implements IcontaController{
     @Autowired
     IContaCommand iContaCommand;
 

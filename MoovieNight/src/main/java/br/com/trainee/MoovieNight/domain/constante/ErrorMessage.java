@@ -21,4 +21,5 @@ public enum ErrorMessage {
     public static final String PEDIDO_NAO_EXISTENTE = "O pedido não existe";
     public static final String EMAIL_JA_CADASTRADO = "Email já cadastrado";
     public static final String PEDIDO_JA_FINALIZADO = "Pedido já foi finalizado";
+    public static final String TIPO_CONTA_INVALIDO = "Tipo de conta inválido" ;
 }

@@ -62,6 +62,9 @@ public class MoovieFilter extends OncePerRequestFilter {
 
     private boolean checkPathExistence(HttpServletRequest request) {
         String servletPath = request.getServletPath();
+        if (servletPath.contains("/swagger") || servletPath.contains("/v3/api-docs")) {
+            return true;
+        }
         return RotasUtil.getRotas(resourceLoader).containsKey(servletPath);
     }
 

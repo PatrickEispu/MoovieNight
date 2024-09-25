@@ -1,0 +1,435 @@
+--- salvar usuario
+CREATE OR REPLACE PROCEDURE CRIAR_CONTA(
+P_NOME IN VARCHAR,
+P_EMAIL IN VARCHAR,
+P_DATA_NASCIMENTO IN DATE,
+P_ID_CARTAO IN VARCHAR,
+P_TIPO_CONTA IN VARCHAR
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+INSERT INTO CONTA(NOME,
+EMAIL,
+DATA_NASCIMENTO,
+ID_CARTAO,
+TIPO_CONTA)
+VALUES(
+P_NOME,
+P_EMAIL,
+P_DATA_NASCIMENTO,
+P_ID_CARTAO,
+P_TIPO_CONTA
+);
+END;
+$$
+
+--CALL CRIAR_CONTA('TESTE','TESTE@EMAIL.COM','18-04-2000','TES1122','CLIENTE');
+
+--- SALVAR FILME
+CREATE OR REPLACE PROCEDURE CRIAR_FILME(
+P_NOME IN VARCHAR,
+P_CLASS_INDICATIVA IN INT,
+P_GENERO IN VARCHAR,
+P_QUANTIDADE IN INT,
+P_SINOPSE IN TEXT
+)
+LANGUAGE plpgsql AS $$
+DECLARE V_ID_FILME INT;
+BEGIN
+	INSERT INTO filme(
+	NOME,
+	CLASS_INDICATIVA,
+	GENERO,
+	QUANTIDADE)
+	VALUES(
+	P_NOME,
+	P_CLASS_INDICATIVA,
+	P_GENERO,
+	P_QUANTIDADE
+	)
+	RETURNING ID_FILME INTO V_ID_FILME;
+
+INSERT INTO descricao (FK_ID_FILME,SINOPSE) VALUES (V_ID_FILME,P_SINOPSE);
+END;
+$$;
+
+--CALL criar_filme('FILME TESTE',10,'GENERO TESTE',5,'SINOPSE DE TESTE PARA UM FILME TESTE');
+
+--SELECT * FROM filme f INNER JOIN descricao d ON F.id_filme = D.fk_id_filme ;
+
+---buscar id do filme
+CREATE OR REPLACE FUNCTION BUSCAR_ID_FILME(P_NOME VARCHAR)
+RETURNS TABLE(t_id_filme int) AS $$
+BEGIN
+ RETURN QUERY
+ SELECT id_filme FROM FILME WHERE filme.nome = P_NOME;
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT buscar_id_filme('ee');
+
+---- verifica se o filme existe
+CREATE OR REPLACE FUNCTION VERIFICA_FILME(P_NOME VARCHAR)
+RETURNS Boolean AS $$
+DECLARE CONTADOR INT;
+BEGIN
+	SELECT count(*) INTO CONTADOR FROM FILME WHERE nome =P_NOME ;
+IF CONTADOR >0
+THEN RETURN TRUE;
+ELSE RETURN FALSE;
+END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT VERIFICA_FILME('ee');
+
+--verificar quantidade de filme
+CREATE OR REPLACE
+FUNCTION VERIFICA_FILME_QUANTIDADE (P_NOME VARCHAR)
+RETURNS BOOLEAN
+AS $$
+DECLARE D_QUANTIDADE INT;
+
+BEGIN
+	SELECT
+	quantidade
+INTO
+	D_QUANTIDADE
+FROM
+	FILME
+WHERE
+	filme.nome = P_NOME;
+
+IF
+	D_QUANTIDADE >0
+	THEN
+RETURN TRUE;
+ELSE
+RETURN FALSE;
+END IF;
+END;
+
+$$ LANGUAGE plpgsql;
+
+SELECT VERIFICA_FILME_QUANTIDADE('FILME TESTE');
+
+--adicionar filme na biblioteca do cliente
+CREATE OR REPLACE PROCEDURE alugar_filme (
+P_ID_PEDIDO_ALUGUEL IN VARCHAR,
+P_FK_ID_CONTA IN INT,
+P_NOME IN VARCHAR,
+P_INICIO_ALUGUEL IN DATE,
+P_FIM_ALUGUEL IN DATE,
+P_ALUGUEL_STATUS IN VARCHAR
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+UPDATE filme
+SET quantidade = quantidade-1
+WHERE nome = P_NOME;
+INSERT
+	INTO
+	BIBLIOTECA_USUARIO(
+	ID_PEDIDO_ALUGUEL,
+	FK_ID_CONTA,
+	filme
+	 	)
+VALUES (
+	P_ID_PEDIDO_ALUGUEL,
+	P_FK_ID_CONTA,
+	P_NOME
+	);
+INSERT INTO pedido
+(
+fk_id_pedido_aluguel,
+inicio_aluguel,
+fim_aluguel,
+aluguel_status)
+VALUES
+(
+P_ID_PEDIDO_ALUGUEL,
+P_INICIO_ALUGUEL,
+P_FIM_ALUGUEL,
+P_ALUGUEL_STATUS
+);
+END;
+$$;
+
+--CALL adicionar_filme_biblioteca (
+--'PAT211012001',
+--1,
+--'FILME TESTE',
+--'11-11-2011',
+--'15-11-2011',
+--'Ativo'
+--);
+
+--SELECT * FROM  biblioteca_usuario bu;
+--DELETE FROM biblioteca_usuario
+
+--devolver filme
+CREATE OR REPLACE
+PROCEDURE DEVOLVER_FILME(
+P_ID_PEDIDO_ALUGUEL IN VARCHAR,
+P_ALUGUEL_STATUS IN VARCHAR
+)
+LANGUAGE plpgsql AS $$
+DECLARE D_FILME VARCHAR;
+BEGIN
+SELECT
+	FILME
+INTO
+	D_FILME
+FROM
+	BIBLIOTECA_USUARIO
+WHERE
+	id_pedido_aluguel = P_ID_PEDIDO_ALUGUEL;
+UPDATE
+	pedido
+SET
+	aluguel_status = P_ALUGUEL_STATUS
+WHERE
+	fk_id_pedido_aluguel = P_ID_PEDIDO_ALUGUEL;
+
+UPDATE
+	filme
+SET
+	quantidade = quantidade + 1
+WHERE
+	nome = D_FILME;
+END;
+
+$$;
+
+--CALL devolver_filme ('PAT211012001','Finalizado');
+
+--SELECT * FROM  pedido p ;
+
+--listar todos os filmes
+CREATE OR REPLACE FUNCTION BUSCAR_TODO_FILME()
+RETURNS TABLE (T_NOME VARCHAR,T_GENERO VARCHAR,T_CLASS_INDICATIVA INT,T_QUANTIDADE int)
+AS $$
+BEGIN
+	RETURN QUERY
+	SELECT nome,genero ,class_indicativa ,quantidade FROM FILME;
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT * FROM BUSCAR_TODO_FILME();
+
+--listar por genero
+CREATE OR REPLACE FUNCTION BUSCAR_GENERO_FILME (P_GENERO VARCHAR)
+RETURNS TABLE (T_NOME VARCHAR,T_GENERO varchar,T_CLASS_INDICATIVA INT,T_QUANTIDADE INT)
+AS $$
+BEGIN
+	RETURN QUERY
+	SELECT nome ,genero ,class_indicativa ,quantidade  FROM FILME
+WHERE genero ILIKE P_GENERO || '%';
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT * FROM buscar_genero_filme('GENERO TESTE');
+
+--listar por nome aproximado
+CREATE OR REPLACE
+FUNCTION BUSCAR_NOME_FILME(P_NOME VARCHAR)
+RETURNS TABLE (T_NOME VARCHAR,
+T_GENERO varchar,
+T_CLASS_INDICATIVA INT,
+T_QUANTIDADE INT)
+AS $$
+BEGIN
+	RETURN QUERY
+	SELECT
+	nome ,
+	genero ,
+	class_indicativa ,
+	quantidade
+FROM
+	FILME
+WHERE
+	nome ILIKE '%'|| P_NOME ||'%';
+END;
+
+$$ LANGUAGE plpgsql;
+
+--SELECT * FROM buscar_nome_filme ('TES');
+
+--buscar se email existe
+CREATE OR REPLACE FUNCTION VERIFICA_EMAIL(P_EMAIL VARCHAR)
+RETURNS BOOL AS $$
+DECLARE CONTADOR INT;
+BEGIN
+	SELECT count(*) INTO CONTADOR FROM conta c WHERE email = P_EMAIL;
+IF CONTADOR>0
+THEN
+RETURN TRUE;
+ELSE
+RETURN FALSE;
+END IF;
+
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT VERIFICA_EMAIL('patrick@email.com')
+
+-- verificar idCartao
+CREATE OR REPLACE FUNCTION VERIFICA_LOGIN(P_EMAIL VARCHAR,P_ID_CARTAO VARCHAR)
+RETURNS BOOL AS $$
+DECLARE CONTADOR INT;
+BEGIN
+	SELECT COUNT(*) INTO CONTADOR FROM CONTA WHERE email = P_EMAIL AND id_cartao = P_ID_CARTAO;
+IF CONTADOR >0
+	THEN
+RETURN TRUE;
+	ELSE
+	RETURN FALSE;
+END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT verifica_id_cartao('PAT1804');
+
+--retorna conta info
+CREATE OR REPLACE FUNCTION BUSCAR_CONTA(P_EMAIL VARCHAR,P_ID_CARTAO VARCHAR)
+RETURNS TABLE(T_ID_CONTA INT,
+T_EMAIL VARCHAR,
+T_TIPO_CONTA VARCHAR,
+T_ID_CARTAO VARCHAR,
+T_DATA_NASCIMENTO DATE
+) AS $$
+BEGIN
+	RETURN QUERY
+	SELECT ID_CONTA,EMAIL,TIPO_CONTA,id_cartao ,data_nascimento
+	FROM CONTA
+	WHERE conta.email = P_EMAIL AND id_cartao = P_ID_CARTAO;
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT * FROM buscar_conta('patrick@email.com','PAT1804');
+
+---buscar filmes alugados
+CREATE OR REPLACE FUNCTION BUSCAR_FILME_ALUGADO(P_ID_CONTA INT)
+RETURNS TABLE (T_FILME VARCHAR,T_ID_PEDIDO VARCHAR,T_DATA_DEVOLUCAO DATE,T_STATUS VARCHAR)
+AS $$
+BEGIN
+	RETURN QUERY
+	SELECT BU.filme,BU.id_pedido_aluguel ,P.fim_aluguel, P.aluguel_status
+FROM biblioteca_usuario BU
+INNER JOIN PEDIDO P
+ON BU.id_pedido_aluguel = P.fk_id_pedido_aluguel
+WHERE fk_id_conta = P_ID_CONTA;
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT * FROM  buscar_filme_alugado(2);
+
+--buscar sinopse do filme
+CREATE OR REPLACE FUNCTION BUSCAR_FILME_SINOPSE( P_FILME VARCHAR)
+RETURNS TABLE (T_SINOPSE TEXT)
+AS $$
+BEGIN
+    RETURN QUERY
+	SELECT sinopse
+ 	FROM DESCRICAO D
+	INNER JOIN FILME F
+	ON F.id_filme = D.fk_id_filme
+	WHERE f.nome = P_FILME;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT BUSCAR_FILME_SINOPSE('ee');
+
+---buscar filme por id
+CREATE OR REPLACE FUNCTION  BUSCAR_FILME_POR_ID(P_ID_FILME INT)
+RETURNS TABLE (T_FILME VARCHAR, T_GENERO VARCHAR, T_CLASS_INDICATIVA INT, T_QUANTIDADE INT)
+AS $$
+BEGIN
+	RETURN QUERY
+	SELECT nome,genero ,class_indicativa ,quantidade  FROM FILME WHERE filme.id_filme =P_ID_FILME;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT * FROM  buscar_filme_por_id(2);
+--verifica pedido existe
+CREATE OR REPLACE FUNCTION VERIFICA_PEDIDO_EXISTE(P_EMAIL VARCHAR, P_ID_PEDIDO VARCHAR)
+RETURNS BOOL AS $$
+DECLARE D_CONTADOR INT;
+BEGIN
+SELECT COUNT(*) INTO D_CONTADOR FROM BIBLIOTECA_USUARIO BU
+INNER JOIN CONTA C
+ON C.id_conta = BU.fk_id_conta
+WHERE BU.id_pedido_aluguel = P_ID_PEDIDO;
+IF D_CONTADOR >0
+THEN RETURN TRUE;
+ELSE RETURN FALSE;
+END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+---verifica pedido já realizado
+CREATE OR REPLACE FUNCTION verifica_pedido_realizado(P_EMAIL VARCHAR,P_ID_PEDIDO VARCHAR)
+RETURNS BOOL AS $$
+DECLARE D_STATUS VARCHAR;
+BEGIN
+	SELECT aluguel_status INTO D_STATUS
+	FROM PEDIDO P
+	INNER JOIN BIBLIOTECA_USUARIO BU
+	ON P.fk_id_pedido_aluguel = BU.id_pedido_aluguel
+	INNER JOIN CONTA C
+	ON BU.fk_id_conta = C.id_conta
+	WHERE C.email = P_EMAIL AND BU.id_pedido_aluguel = P_ID_PEDIDO;
+IF D_STATUS LIKE 'Ativo'
+THEN RETURN TRUE;
+ELSE RETURN FALSE;
+END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT verifica_pedido_realizado('patrick@email.com','PAT1804523092024');
+
+--verifica pedido ja encerrado
+CREATE OR REPLACE FUNCTION verifica_pedido_encerrado(P_EMAIL VARCHAR,P_ID_PEDIDO VARCHAR)
+RETURNS BOOL AS $$
+DECLARE D_STATUS VARCHAR;
+BEGIN
+	SELECT aluguel_status INTO D_STATUS
+	FROM PEDIDO P
+	INNER JOIN BIBLIOTECA_USUARIO BU
+	ON P.fk_id_pedido_aluguel = BU.id_pedido_aluguel
+	INNER JOIN CONTA C
+	ON BU.fk_id_conta = C.id_conta
+	WHERE C.email = P_EMAIL AND BU.id_pedido_aluguel = P_ID_PEDIDO;
+IF D_STATUS LIKE 'Encerrado'
+THEN RETURN TRUE;
+ELSE RETURN FALSE;
+END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT verifica_pedido_encerrado('patrick@email.com','PAT1804525092024001221');
+
+
+
+--preencher banco com filmes
+CALL CRIAR_FILME('Missão Impossível', 14, 'Acao', 5, 'Ethan Hunt e sua equipe enfrentam uma missão de alto risco que pode definir o futuro do mundo.');
+CALL CRIAR_FILME('Velozes e Furiosos', 16, 'Acao', 7, 'Dominic Toretto e sua equipe enfrentam novos desafios enquanto lidam com corridas e perseguições emocionantes.');
+CALL CRIAR_FILME('O Exterminador do Futuro', 18, 'Acao', 4, 'Um robô assassino do futuro volta no tempo para eliminar um alvo vital para o futuro da humanidade.');
+CALL CRIAR_FILME('Deadpool', 16, 'Comedia', 6, 'Um anti-herói sarcástico e violento busca vingança contra aqueles que o transformaram em um mutante.');
+CALL CRIAR_FILME('Se Beber, Não Case', 14, 'Comedia', 8, 'Três amigos enfrentam uma noite selvagem em Las Vegas que eles não conseguem se lembrar.');
+CALL CRIAR_FILME('Doze é Demais', 10, 'Comedia', 9, 'Um pai de 12 filhos tenta equilibrar a vida familiar caótica com sua carreira.');
+CALL CRIAR_FILME('A Culpa é das Estrelas', 12, 'Drama', 3, 'Dois adolescentes com câncer vivem uma linda e comovente história de amor.');
+CALL CRIAR_FILME('O Curioso Caso de Benjamin Button', 14, 'Drama', 5, 'A história de um homem que nasce idoso e rejuvenesce com o passar dos anos.');
+CALL CRIAR_FILME('Parasita', 16, 'Drama', 4, 'Uma família pobre se infiltra na vida de uma rica, com consequências devastadoras.');
+CALL CRIAR_FILME('Invocação do Mal', 18, 'Terror', 7, 'Uma família enfrenta eventos sobrenaturais aterrorizantes em uma casa assombrada.');
+CALL CRIAR_FILME('O Iluminado', 18, 'Terror', 6, 'Um escritor e sua família ficam isolados em um hotel assombrado, com consequências trágicas.');
+CALL CRIAR_FILME('Corra!', 16, 'Terror', 5, 'Um jovem afro-americano descobre um terrível segredo ao visitar a família de sua namorada.');
+CALL CRIAR_FILME('Titanic', 12, 'Romance', 3, 'Um romance épico entre Jack e Rose a bordo do trágico navio Titanic.');
+CALL CRIAR_FILME('Orgulho e Preconceito', 10, 'Romance', 4, 'A história de amor de Elizabeth Bennet e o orgulhoso Sr. Darcy, ambientada na Inglaterra rural.');
+CALL CRIAR_FILME('Diário de uma Paixão', 12, 'Romance', 2, 'O romance intenso entre Allie e Noah, que enfrentam desafios para ficarem juntos.');
+CALL CRIAR_FILME('Toy Story', 10, 'Animacao', 6, 'Woody, Buzz Lightyear e seus amigos brinquedos embarcam em uma aventura emocionante.');
+CALL CRIAR_FILME('Procurando Nemo', 10, 'Animacao', 7, 'Um peixe-palhaço é sequestrado, e seu pai embarca em uma jornada para resgatá-lo.');
+CALL CRIAR_FILME('Shrek', 10, 'Animacao', 8, 'Um ogro mal-humorado e um burro tagarela resgatam uma princesa em uma aventura hilariante.');
+CALL CRIAR_FILME('Os Incríveis', 12, 'Animacao', 6, 'Uma família de super-heróis tenta conciliar a vida normal com o combate ao crime.');
+CALL CRIAR_FILME('Zootopia', 12, 'Animacao', 5, 'Uma coelha policial e uma raposa trapaceira unem forças para resolver um grande mistério na cidade de Zootopia.');
+

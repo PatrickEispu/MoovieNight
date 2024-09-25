@@ -83,8 +83,7 @@ public class FilmeCommand implements IfilmeCommand {
     }
 
     private void checkPedidoJaFinalizado(String idPedido, String email) {
-        if (iFilmeRespository.checkPedidoFinalizado(idPedido, email))
-        {
+        if (iFilmeRespository.checkPedidoFinalizado(idPedido, email)) {
             throw new NegocioException(ErrorMessage.PEDIDO_JA_FINALIZADO);
         }
     }
@@ -114,6 +113,10 @@ public class FilmeCommand implements IfilmeCommand {
 
     @Override
     public FilmeSinopseDtoResponse getFilmeSinopse(FilmeNomeDtoRequest filmeNomeDtoRequest) {
+        if (!filmeExiste(filmeNomeDtoRequest.filme())) {
+            throw new NegocioException(ErrorMessage.FILME_NAO_ENCONTRADO);
+        }
+
         return iFilmeRespository.getFilmeSinopse(filmeNomeDtoRequest.filme());
     }
 
